@@ -7,7 +7,7 @@ class Borrower(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
-    email = Column(String, nullable=True)
+    contacts = Column(String, nullable=False)
 
     # Relationships
     borrow_records = relationship("BorrowRecord", back_populates="borrower")

@@ -3,7 +3,7 @@ from .base import Base
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
-class BorrowRecord(Base):
+class BorrowRecords(Base):
     __tablename__ = "borrow_records"
 
     id = Column(Integer, primary_key=True)
