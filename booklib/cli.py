@@ -2,6 +2,7 @@ import click
 from sqlalchemy.exc import SQLAlchemyError
 from booklib.db.database import SessionLocal
 from booklib import helpers
+from booklib.db.models import Borrower, Book
 
 logo = '''
 ██████   ██████   ██████  ██   ██ ██      ██ ██ ██████  
@@ -149,29 +150,31 @@ def delete_borrower_command(borrower_id):
 
 # Borrowing
 @cli.command("borrow-book")
-@click.argument("book_name")
+@click.argument("book_title")
 @click.argument("borrower_name")
 def borrow_command(book_name, borrower_name):
     """Borrow book"""
     with SessionLocal() as session:
-        helpers.borrow(session, book_name, borrower_name)
-        session.commit()
-        click.echo("Book borrowed.")
+        borrower = session.query(Borrower).filter_by(name=borrower_name).first()
+        contacts = None
+        if not borrower:
+            contacts = click.prompt(f"New borrower '{borrower_name}'. Enter contacts")
+
+        helpers.borrow(session, book_title, borrower_name, contacts)
+        click.echo(f"Book '{book_title}' borrowed by {borrower_name}.")
 
 
 @cli.command("return-book")
-@click.argument("book_name")
+@click.argument("book_title")
 @click.argument("borrower_name")
 def return_command(book_name, borrower_name):
     """Return book"""
     with SessionLocal() as session:
-        helpers.return_book(session, book_name, borrower_name)
+        helpers.return_book(session, book_title, borrower_name)
         session.commit()
-        click.echo("Book returned.")
+        click.echo(f"Book '{book_title}' returned by {borrower_name}.")
 
-#Reports
-# REPORT COMMANDS
-
+#Report commands
 @cli.command("borrowed-books")
 def borrowed_books_command():
     """List all currently borrowed books with borrower names."""
@@ -332,18 +335,24 @@ def menu():
                     print("Borrower deleted.")
 
                 elif choice == "12":
-                    book_name = input("Book name: ")
-                    borrower_name = int(input("Borrower name: "))
-                    helpers.borrow(session, book_name, borrower_name)
+                    book_title = input("Book title: ")
+                    borrower_name = input("Borrower name: ")
+                    borrower = session.query(Borrower).filter_by(name=borrower_name).first()
+                    contacts = None
+                    if not borrower:
+                        contacts = input(f"New borrower '{borrower_name}'. Enter contacts: ")
+                    helpers.borrow(session, book_title, borrower_name, contacts)
                     session.commit()
-                    print("Book borrowed.")
+                    print(f"Book '{book_title}' borrowed by {borrower_name}.")
+                    
 
                 elif choice == "13":
-                    book_name = int(input("Book name: "))
-                    borrower_name = int(input("Borrower name: "))
+                    book_name = input("Book title: ")
+                    borrower_name = input("Borrower name: ")
                     helpers.return_book(session, book_name, borrower_name)
                     session.commit()
-                    print("Book returned.")
+                    print(f"Book '{book_title}' returned by {borrower_name}.")
+
 
                 elif choice == "14":
                     records = helpers.get_borrowed_books(session)
@@ -351,7 +360,7 @@ def menu():
                         print("No borrowed books.")
                     else:
                         for r in records:
-                            print(f"Book: {r.book.title} | Borrower: {r.borrower.name} | Borrowed on: {r.borrow_date}")
+                            print(f"Book: {r['book_title']} | Borrower: {r['borrower_name']} | Borrowed on: {r['borrow_date']}")
 
                 elif choice == "15":
                     book_id = int(input("Enter book ID: "))

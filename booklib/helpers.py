@@ -105,12 +105,16 @@ def delete_borrower(session, id):
 
 
 # Borrowing / Returning
-def borrow(session, book_title, borrower_name):
+def borrow(session, book_title, borrower_name, contacts=None):
     """Borrow a book by title for a borrower by name."""
+    book_title = book_title.strip()
+    borrower_name = borrower_name.strip()
 
     borrower = session.query(Borrower).filter_by(name=borrower_name).first()
     if not borrower:
-        borrower = Borrower(name=borrower_name)
+        if not contacts:
+            raise ValueError("Contacts required for new borrower")
+        borrower = Borrower(name=borrower_name, contacts=contacts)
         session.add(borrower)
 
     book = session.query(Book).filter_by(title=book_title).first()
@@ -127,6 +131,7 @@ def borrow(session, book_title, borrower_name):
 
 def check_availability(session, book):
     '''Checks if book is available.'''
+    
     return book.available
 
 def mark_as_unavailable(session, book):
@@ -136,7 +141,7 @@ def mark_as_unavailable(session, book):
 
 def create_borrow_record(session, book, borrower):
     '''Creates BorrowRecord with borrow_date=NOW().'''
-    record = BorrowRecords(book_id=book.id, borrower_id=borrower.id, borrow_date=datetime.now(), returned=False)
+    record = BorrowRecords(book_id=book.id, borrower_id=borrower.id, borrow_date=datetime.now(), return_date=None)
     session.add(record)
     session.commit()
     return record
@@ -152,7 +157,7 @@ def return_book(session, book_title, borrower_name):
     if not book:
         raise NoResultFound(f"Book '{book_title}' not found")
 
-    record = session.query(BorrowRecords).filter_by(book_id=book.id, borrower_id=borrower.id, returned=False).first()
+    record = session.query(BorrowRecords).filter_by(book_id=book.id, borrower_id=borrower.id, return_date=False).first()
     if not record:
         raise NoResultFound("Active borrow record not found")
     update_return_date(session, record)
@@ -172,10 +177,24 @@ def mark_as_available(session, book):
 
 
 # Reports / Queries
-def get_borrowed_books(session, borrow_records=None):
-    '''borrowed-books → List all currently borrowed books with borrower names.'''
-    q = session.query(BorrowRecords).filter_by(returned=False).all()
-    return q
+def get_borrowed_books(session):
+    """Return list of dicts with book title, borrower name, borrow date."""
+    records = (
+        session.query(BorrowRecords)
+        .join(BorrowRecords.book)
+        .join(BorrowRecords.borrower)
+        .filter(BorrowRecords.return_date.is_(None))
+        .all()
+    )
+    return [
+        {
+            "book_title": record.book.title,
+            "borrower_name": record.borrower.name,
+            "borrow_date": record.borrow_date,
+        }
+        for record in records
+    ]
+
 
 def borrowing_history(session, book):
     '''history <book_id> → Show all past borrowing records for a book.'''
