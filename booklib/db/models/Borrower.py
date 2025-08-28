@@ -10,7 +10,7 @@ class Borrower(Base):
     contacts = Column(String, nullable=False)
 
     # Relationships
-    borrow_records = relationship("BorrowRecord", back_populates="borrower")
+    borrow_records = relationship("BorrowRecords", back_populates="borrower")
 
     def __repr__(self):
         return f"<Borrower(id={self.id}, name='{self.name}')>"

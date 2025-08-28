@@ -19,4 +19,4 @@ class BorrowRecords(Base):
     borrower = relationship("Borrower", back_populates="borrow_records")
 
     def __repr__(self):
-        return f"<BorrowRecord(id={self.id}, book_id={self.book_id}, borrower_id={self.borrower_id})>"
+        return f"<BorrowRecords(id={self.id}, book_id={self.book_id}, borrower_id={self.borrower_id})>"
