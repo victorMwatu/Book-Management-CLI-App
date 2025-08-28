@@ -272,9 +272,9 @@ def menu():
                     print("Borrower deleted.")
 
                 elif choice == "12":
-                    book_id = int(input("Book ID: "))
-                    borrower_id = int(input("Borrower ID: "))
-                    helpers.borrow(session, book_id, borrower_id)
+                    book_name = int(input("Book name: "))
+                    borrower_name = int(input("Borrower name: "))
+                    helpers.borrow(session, book_name, borrower_name)
                     session.commit()
                     print("Book borrowed.")
 
@@ -286,8 +286,8 @@ def menu():
                     print("Book returned.")
 
                 elif choice == "14":
-                    for b in helpers.top_borrower(session):
-                        print(f"{b.id}: {b.name} ({b.contacts})")
+                    for borrower, borrow_count in helpers.top_borrower(session, number):
+                        print(f'ID: {borrower.id}:, {borrower.name}, Borrowed: {borrow_count}')
 
                 elif choice == "0":
                     print("Goodbye!")

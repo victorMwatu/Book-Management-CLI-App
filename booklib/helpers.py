@@ -105,12 +105,25 @@ def delete_borrower(session, id):
 
 
 # Borrowing / Returning
-def borrow(session, book, borrower):
-    '''borrow <book_id> --by <borrower_id>'''
+def borrow(session, book_title, borrower_name):
+    """Borrow a book by title for a borrower by name."""
+
+    borrower = session.query(Borrower).filter_by(name=borrower_name).first()
+    if not borrower:
+        borrower = Borrower(name=borrower_name)
+        session.add(borrower)
+
+    book = session.query(Book).filter_by(title=book_title).first()
+    if not book:
+        raise NoResultFound(f"Book '{book_title}' not found")
+
     if not check_availability(session, book):
-        raise ValueError("Book not available")
+        raise ValueError(f"'{book.title}' is not available")
+
     mark_as_unavailable(session, book)
-    return create_borrow_record(session, book, borrower)
+    record = create_borrow_record(session, book, borrower)
+    session.commit()
+    return record
 
 def check_availability(session, book):
     '''Checks if book is available.'''
