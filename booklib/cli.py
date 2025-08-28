@@ -149,23 +149,23 @@ def delete_borrower_command(borrower_id):
 
 # Borrowing
 @cli.command("borrow-book")
-@click.argument("book_id", type=int)
-@click.argument("borrower_id", type=int)
-def borrow_command(book_id, borrower_id):
+@click.argument("book_name")
+@click.argument("borrower_name")
+def borrow_command(book_name, borrower_name):
     """Borrow book"""
     with SessionLocal() as session:
-        helpers.borrow(session, book_id, borrower_id)
+        helpers.borrow(session, book_name, borrower_name)
         session.commit()
         click.echo("Book borrowed.")
 
 
 @cli.command("return-book")
-@click.argument("book_id", type=int)
-@click.argument("borrower_id", type=int)
-def return_command(book_id, borrower_id):
+@click.argument("book_name")
+@click.argument("borrower_name")
+def return_command(book_name, borrower_name):
     """Return book"""
     with SessionLocal() as session:
-        helpers.return_book(session, book_id, borrower_id)
+        helpers.return_book(session, book_name, borrower_name)
         session.commit()
         click.echo("Book returned.")
 
@@ -279,9 +279,9 @@ def menu():
                     print("Book borrowed.")
 
                 elif choice == "13":
-                    book_id = int(input("Book ID: "))
-                    borrower_id = int(input("Borrower ID: "))
-                    helpers.return_book(session, book_id, borrower_id)
+                    book_name = int(input("Book name: "))
+                    borrower_name = int(input("Borrower name: "))
+                    helpers.return_book(session, book_name, borrower_name)
                     session.commit()
                     print("Book returned.")
 

@@ -141,8 +141,17 @@ def create_borrow_record(session, book, borrower):
     session.commit()
     return record
 
-def return_book(session, book, borrower):
+def return_book(session, book_title, borrower_name):
     '''return <book_id>'''
+
+    borrower = session.query(Borrower).filter_by(name=borrower_name).first()
+    if not borrower:
+        raise NoResultFound(f"Borrower '{borrower_name}' not found")
+
+    book = session.query(Book).filter_by(title=book_title).first()
+    if not book:
+        raise NoResultFound(f"Book '{book_title}' not found")
+
     record = session.query(BorrowRecords).filter_by(book_id=book.id, borrower_id=borrower.id, returned=False).first()
     if not record:
         raise NoResultFound("Active borrow record not found")
