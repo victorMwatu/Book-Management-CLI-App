@@ -91,6 +91,7 @@ def update_book_command(book_id):
 @click.option("--birth", type=int, required=False)
 @click.option("--country", required=False)
 def add_author_command(name, birth, country):
+    """Add an author"""
     with SessionLocal() as session:
         helpers.add_author(session, name, birth, country)
         session.commit()
@@ -99,6 +100,7 @@ def add_author_command(name, birth, country):
 
 @cli.command("list-authors")
 def list_authors_command():
+    """List authors"""
     with SessionLocal() as session:
         authors = helpers.list_authors(session)
         for a, count in authors:
@@ -108,6 +110,7 @@ def list_authors_command():
 @cli.command("find-author")
 @click.argument("name")
 def find_author_command(name):
+    """Find author"""
     with SessionLocal() as session:
         a = helpers.find_author(session, name)
         click.echo(f"{a.id}: {a.name}")
@@ -118,6 +121,7 @@ def find_author_command(name):
 @click.argument("name")
 @click.argument("contacts")
 def add_borrower_command(name, contacts):
+    """Add to borrowers list"""
     with SessionLocal() as session:
         helpers.add_borrower(session, name, contacts)
         session.commit()
@@ -126,6 +130,7 @@ def add_borrower_command(name, contacts):
 
 @cli.command("list-borrowers")
 def list_borrowers_command():
+    """List borrowers"""
     with SessionLocal() as session:
         borrowers = helpers.list_borrowers(session)
         for b in borrowers:
@@ -135,6 +140,7 @@ def list_borrowers_command():
 @cli.command("delete-borrower")
 @click.argument("borrower_id", type=int)
 def delete_borrower_command(borrower_id):
+    """Delete borrower"""
     with SessionLocal() as session:
         helpers.delete_borrower(session, borrower_id)
         session.commit()
@@ -146,6 +152,7 @@ def delete_borrower_command(borrower_id):
 @click.argument("book_id", type=int)
 @click.argument("borrower_id", type=int)
 def borrow_command(book_id, borrower_id):
+    """Borrow book"""
     with SessionLocal() as session:
         helpers.borrow(session, book_id, borrower_id)
         session.commit()
@@ -156,10 +163,23 @@ def borrow_command(book_id, borrower_id):
 @click.argument("book_id", type=int)
 @click.argument("borrower_id", type=int)
 def return_command(book_id, borrower_id):
+    """Return book"""
     with SessionLocal() as session:
         helpers.return_book(session, book_id, borrower_id)
         session.commit()
         click.echo("Book returned.")
+
+#Reports
+@cli.command("top-borrowers")
+@click.argument("number", type=int, required=False)
+def top_borrowers(number):
+    """Show top borrowers"""
+    with SessionLocal() as session:
+        top_n = helpers.top_borrower(number)
+        for b in top_n:
+            click.echo(f"{b.id}: {b.name} ({b.contacts})")
+
+
 
 
 # Menue mode when no arguments are passed
@@ -180,6 +200,7 @@ def menu():
         print("11. Delete borrower")
         print("12. Borrow book")
         print("13. Return book")
+        print("14. Top borrowers")
         print("0. Exit")
 
         choice = input("Enter choice: ").strip()
@@ -263,6 +284,10 @@ def menu():
                     helpers.return_book(session, book_id, borrower_id)
                     session.commit()
                     print("Book returned.")
+
+                elif choice == "14":
+                    for b in helpers.top_borrower(session):
+                        print(f"{b.id}: {b.name} ({b.contacts})")
 
                 elif choice == "0":
                     print("Goodbye!")
