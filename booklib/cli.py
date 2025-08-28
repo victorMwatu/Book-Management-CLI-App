@@ -170,16 +170,72 @@ def return_command(book_name, borrower_name):
         click.echo("Book returned.")
 
 #Reports
-@cli.command("top-borrowers")
-@click.argument("number", type=int, required=False)
-def top_borrowers(number):
-    """Show top borrowers. """
+# REPORT COMMANDS
+
+@cli.command("borrowed-books")
+def borrowed_books_command():
+    """List all currently borrowed books with borrower names."""
     with SessionLocal() as session:
-        top_n = helpers.top_borrower(session, number)
-        for borrower, borrow_count in top_n:
-            click.echo(f'ID: {borrower.id}:, {borrower.name}, Borrowed: {borrow_count}')
+        records = helpers.get_borrowed_books(session)
+        if not records:
+            click.echo("No borrowed books.")
+        else:
+            for r in records:
+                click.echo(f"Book: {r.book.title} | Borrower: {r.borrower.name} | Borrowed on: {r.borrow_date}")
+
+@cli.command("history")
+@click.argument("book_id", type=int)
+def history_command(book_id):
+    """Show all past borrowing records for a book."""
+    with SessionLocal() as session:
+        book = session.query(Book).get(book_id)
+        if not book:
+            click.echo("Book not found.")
+            return
+        history = helpers.borrowing_history(session, book)
+        if not history:
+            click.echo("No history for this book.")
+        else:
+            for r in history:
+                click.echo(f"Borrower: {r.borrower.name} | Borrowed: {r.borrow_date} | Returned: {r.return_date or 'Not returned'}")
+
+@cli.command("late-returns")
+@click.option("--days", type=int, default=30, help="Number of days overdue")
+def late_returns_command(days):
+    """Find overdue books."""
+    with SessionLocal() as session:
+        late = helpers.late_returns(session, days=days)
+        if not late:
+            click.echo("No overdue books.")
+        else:
+            for r in late:
+                overdue_days = (datetime.now() - r.borrow_date).days
+                click.echo(f"Book: {r.book.title} | Borrower: {r.borrower.name} | Overdue: {overdue_days} days")
+
+@cli.command("top-authors")
+@click.option("--number", type=int, default=5, help="Number of top authors to show")
+def top_authors_command(number):
+    """List authors by number of books."""
+    with SessionLocal() as session:
+        authors = helpers.top_authors(session, number)
+        if not authors:
+            click.echo("No authors found.")
+        else:
+            for a, count in authors:
+                click.echo(f"{a.name} ({count} books)")
 
 
+@cli.command("top-borrowers")
+@click.option("--number", type=int, default=5, help="Number of top borrowers to show")
+def top_borrowers_command(number):
+    """Show top borrowers by borrow count."""
+    with SessionLocal() as session:
+        borrowers = helpers.top_borrower(session, number)
+        if not borrowers:
+            click.echo("No borrowers found.")
+        else:
+            for borrower, borrow_count in borrowers:
+                click.echo(f"Borrower: {borrower.name} | Borrowed: {borrow_count} books")
 
 
 # Menue mode when no arguments are passed
@@ -200,7 +256,11 @@ def menu():
         print("11. Delete borrower")
         print("12. Borrow book")
         print("13. Return book")
-        print("14. Top borrowers")
+        print("14. Borrowed books")
+        print("15. Borrowing history")
+        print("16. Late returns")
+        print("17. Top authors")
+        print("18. Top borrowers")
         print("0. Exit")
 
         choice = input("Enter choice: ").strip()
@@ -272,7 +332,7 @@ def menu():
                     print("Borrower deleted.")
 
                 elif choice == "12":
-                    book_name = int(input("Book name: "))
+                    book_name = input("Book name: ")
                     borrower_name = int(input("Borrower name: "))
                     helpers.borrow(session, book_name, borrower_name)
                     session.commit()
@@ -286,8 +346,53 @@ def menu():
                     print("Book returned.")
 
                 elif choice == "14":
-                    for borrower, borrow_count in helpers.top_borrower(session, number):
-                        print(f'ID: {borrower.id}:, {borrower.name}, Borrowed: {borrow_count}')
+                    records = helpers.get_borrowed_books(session)
+                    if not records:
+                        print("No borrowed books.")
+                    else:
+                        for r in records:
+                            print(f"Book: {r.book.title} | Borrower: {r.borrower.name} | Borrowed on: {r.borrow_date}")
+
+                elif choice == "15":
+                    book_id = int(input("Enter book ID: "))
+                    book = session.query(Book).get(book_id)
+                    if not book:
+                        print("Book not found.")
+                    else:
+                        history = helpers.borrowing_history(session, book)
+                        if not history:
+                            print("No history for this book.")
+                        else:
+                            for r in history:
+                                print(f"Borrower: {r.borrower.name} | Borrowed: {r.borrow_date} | Returned: {r.return_date or 'Not returned'}")
+
+                elif choice == "16":
+                    days = input("Days overdue (default 30): ") or "30"
+                    late = helpers.late_returns(session, days=int(days))
+                    if not late:
+                        print("No overdue books.")
+                    else:
+                        for r in late:
+                            overdue_days = (datetime.now() - r.borrow_date).days
+                            print(f"Book: {r.book.title} | Borrower: {r.borrower.name} | Overdue: {overdue_days} days")
+
+                elif choice == "17":
+                    num = input("Number of authors (default 5): ") or "5"
+                    authors = helpers.top_authors(session, int(num))
+                    if not authors:
+                        print("No authors found.")
+                    else:
+                        for a, count in authors:
+                            print(f"{a.name} ({count} books)")
+
+                elif choice == "18":
+                    num = input("Number of borrowers (default 5): ") or "5"
+                    borrowers = helpers.top_borrower(session, int(num))
+                    if not borrowers:
+                        print("No borrowers found.")
+                    else:
+                        for borrower, borrow_count in borrowers:
+                            print(f"Borrower: {borrower.name} | Borrowed: {borrow_count} books")
 
                 elif choice == "0":
                     print("Goodbye!")
