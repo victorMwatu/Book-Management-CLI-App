@@ -10,113 +10,164 @@ def add_book(session, title, author, year, genre):
     if not title or not author:
         raise ValueError("Both title and author are required")
 
-    # Check if author already exists
     db_author = session.query(Author).filter_by(name=author).first()
     if not db_author:
         db_author = Author(name=author)
         session.add(db_author)
         session.commit()
 
-    # Create new book
-    book = Book(title=title, year=year, genre=genre, author=db_author)
+    book = Book(title=title, year=year, genre=genre, author=db_author, available=True)
     session.add(book)
     session.commit()
     session.refresh(book)
-
     return book
 
 def list_books(session):
     '''list-books → Show all books, with availability status.'''
-    pass
+    return session.query(Book).all()
 
 def search_book(session, title):
     '''search-book --title "Dune" → Find books by title, author, or genre.'''
-    pass
+    return session.query(Book).join(Author).filter(
+        (Book.title.ilike(f"%{title}%")) |
+        (Book.genre.ilike(f"%{title}%")) |
+        (Author.name.ilike(f"%{title}%"))
+    ).all()
 
 def delete_book(session, id):
     '''delete-book <book_id> → Remove a book.'''
-    pass
+    book = session.query(Book).get(id)
+    if not book:
+        raise NoResultFound("Book not found")
+    session.delete(book)
+    session.commit()
+    return True
 
-def update_book(session, id):
+def update_book(session, id, title=None, author=None, year=None, genre=None):
     '''update-book <book_id> → Change title/author/year.'''
-    pass
+    book = session.query(Book).get(id)
+    if not book:
+        raise NoResultFound("Book not found")
+    if title:
+        book.title = title
+    if author:
+        db_author = session.query(Author).filter_by(name=author).first()
+        if not db_author:
+            db_author = Author(name=author)
+            session.add(db_author)
+            session.commit()
+        book.author = db_author
+    if year:
+        book.year = year
+    if genre:
+        book.genre = genre
+    session.commit()
+    return book
 
 
 # Author Management
 def add_author(session, name, birth_year, country):
     '''add-author → Add new author.'''
-    pass
+    author = Author(name=name, birth_year=birth_year, country=country)
+    session.add(author)
+    session.commit()
+    return author
 
 def list_authors(session):
     '''list-authors → Show authors and how many books they have.'''
-    pass
+    return session.query(Author, func.count(Book.id)).join(Book, isouter=True).group_by(Author.id).all()
 
 def find_author(session, name):
     '''find-author --name "Asimov"'''
-    pass
+    return session.query(Author).filter(Author.name.ilike(f"%{name}%")).all()
 
 
 # Borrower Management
 def add_borrower(session, name, contacts):
     '''add-borrower → Register a new person.'''
-    pass
+    borrower = Borrower(name=name, contacts=contacts)
+    session.add(borrower)
+    session.commit()
+    return borrower
 
 def list_borrowers(session):
     '''list-borrowers → Show who can borrow.'''
-    pass
+    return session.query(Borrower).all()
 
 def delete_borrower(session, id):
     '''delete-borrower <id>'''
-    pass
+    borrower = session.query(Borrower).get(id)
+    if not borrower:
+        raise NoResultFound("Borrower not found")
+    session.delete(borrower)
+    session.commit()
+    return True
 
 
 # Borrowing / Returning
 def borrow(session, book, borrower):
     '''borrow <book_id> --by <borrower_id>'''
-    pass
+    if not check_availability(session, book):
+        raise ValueError("Book not available")
+    mark_as_unavailable(session, book)
+    return create_borrow_record(session, book, borrower)
 
 def check_availability(session, book):
     '''Checks if book is available.'''
-    pass
+    return book.available
 
 def mark_as_unavailable(session, book):
     '''Marks book as unavailable.'''
-    pass
+    book.available = False
+    session.commit()
 
 def create_borrow_record(session, book, borrower):
     '''Creates BorrowRecord with borrow_date=NOW().'''
-    pass
+    record = BorrowRecords(book_id=book.id, borrower_id=borrower.id, borrow_date=datetime.now(), returned=False)
+    session.add(record)
+    session.commit()
+    return record
 
 def return_book(session, book, borrower):
     '''return <book_id>'''
-    pass
+    record = session.query(BorrowRecords).filter_by(book_id=book.id, borrower_id=borrower.id, returned=False).first()
+    if not record:
+        raise NoResultFound("Active borrow record not found")
+    update_return_date(session, record)
+    mark_as_available(session, book)
+    return record
 
 def update_return_date(session, book_record):
     '''Updates return_date.'''
-    pass
+    book_record.return_date = datetime.now()
+    book_record.returned = True
+    session.commit()
 
 def mark_as_available(session, book):
     '''Marks book available again.'''
-    pass
+    book.available = True
+    session.commit()
 
 
 # Reports / Queries
-def get_borrowed_books(session, borrow_records):
+def get_borrowed_books(session, borrow_records=None):
     '''borrowed-books → List all currently borrowed books with borrower names.'''
-    pass
+    q = session.query(BorrowRecords).filter_by(returned=False).all()
+    return q
 
 def borrowing_history(session, book):
     '''history <book_id> → Show all past borrowing records for a book.'''
-    pass
+    return session.query(BorrowRecords).filter_by(book_id=book.id).all()
 
-def late_returns(session, borrow_records):
+def late_returns(session, borrow_records=None, days=30):
     '''late-returns --days 30 → Find overdue books.'''
-    pass
+    cutoff = datetime.now() - timedelta(days=days)
+    return session.query(BorrowRecords).filter(BorrowRecords.returned == False, BorrowRecords.borrow_date < cutoff).all()
 
-def top_authors(session, number):
+def top_authors(session, number=5):
     '''top-authors → List authors by number of books in library.'''
-    pass
+    return session.query(Author, func.count(Book.id).label("book_count")).join(Book).group_by(Author.id).order_by(func.count(Book.id).desc()).limit(number).all()
 
-def top_borrower(session, number):
+def top_borrower(session, number=5):
     '''top-borrowers → People who borrowed the most.'''
-    pass
+    return session.query(Borrower, func.count(BorrowRecords.id).label("borrow_count")).join(BorrowRecords).group_by(Borrower.id).order_by(func.count(BorrowRecords.id).desc()).limit(number).all()
