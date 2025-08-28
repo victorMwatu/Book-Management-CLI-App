@@ -173,11 +173,11 @@ def return_command(book_id, borrower_id):
 @cli.command("top-borrowers")
 @click.argument("number", type=int, required=False)
 def top_borrowers(number):
-    """Show top borrowers"""
+    """Show top borrowers. """
     with SessionLocal() as session:
-        top_n = helpers.top_borrower(number)
-        for b in top_n:
-            click.echo(f"{b.id}: {b.name} ({b.contacts})")
+        top_n = helpers.top_borrower(session, number)
+        for borrower, borrow_count in top_n:
+            click.echo(f'ID: {borrower.id}:, {borrower.name}, Borrowed: {borrow_count}')
 
 
 
